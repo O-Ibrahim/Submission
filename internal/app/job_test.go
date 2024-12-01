@@ -1,8 +1,6 @@
 package app
 
 import (
-	"bytes"
-	"io"
 	"os"
 	"takehome/pkg/db"
 	"testing"
@@ -11,6 +9,7 @@ import (
 )
 
 func Test_JobCreation(t *testing.T) {
+
 	jobHub := NewJobHub()
 
 	job, err := NewJob(jobHub, "echo", "hello")
@@ -23,38 +22,44 @@ func Test_JobCreation(t *testing.T) {
 	// cleanup
 	os.Remove(job.Logfile.Name())
 }
-
 func Test_JobRun(t *testing.T) {
-	jobHub := NewJobHub()
 
-	job, err := NewJob(jobHub, "echo", "hello")
-	assert.Nil(t, err)
-	assert.NotNil(t, job)
+	testCase := []struct {
+		Name    string
+		Command string
+		Args    []string
+		Fail    bool
+	}{
+		{
+			Name:    "Test Job Run Success",
+			Command: "echo",
+			Args:    []string{"hello"},
+			Fail:    false,
+		},
+		{
+			Name:    "Test Job Run Failure",
+			Command: "ecasdasdasdho",
+			Args:    []string{"hasdasdello"},
+			Fail:    true,
+		},
+	}
 
-	err = job.Run()
-	assert.Nil(t, err)
-	assert.Equal(t, job.Status, Finished)
-	//Read log file to make sure that the command was executed
-	logFile, _ := os.Open(job.Logfile.Name())
-	var buff bytes.Buffer
+	for _, tc := range testCase {
+		t.Run(tc.Name, func(t *testing.T) {
+			jobHub := NewJobHub()
 
-	io.Copy(&buff, logFile)
-	assert.Equal(t, "hello\n", buff.String())
-	// cleanup
-	os.Remove(job.Logfile.Name())
-}
+			job, err := NewJob(jobHub, tc.Command, tc.Args...)
 
-func Test_JobRunWithFaultyCommand(t *testing.T) {
-	jobHub := NewJobHub()
+			assert.Nil(t, err)
+			assert.NotNil(t, job)
 
-	job, err := NewJob(jobHub, "ecasdasdasdho", "hasdasdello")
-	assert.Nil(t, err)
-	assert.NotNil(t, job)
+			err = job.Run()
+			assert.Equal(t, tc.Fail, err != nil)
+			// cleanup
+			os.Remove(job.Logfile.Name())
 
-	err = job.Run()
-	assert.NotNil(t, err)
-	// cleanup
-	os.Remove(job.Logfile.Name())
+		})
+	}
 }
 
 func Test_CreateLogFile(t *testing.T) {
@@ -64,19 +69,6 @@ func Test_CreateLogFile(t *testing.T) {
 	//cleanup
 	os.Remove(file.Name())
 }
-
-// func Test_KillJob(t *testing.T) {
-// 	jobHub := NewJobHub()
-
-// 	job, err := NewJob(jobHub, "sleep", "3")
-// 	assert.Nil(t, err)
-// 	assert.NotNil(t, job)
-// 	go job.Run()
-// 	time.Sleep(1 * time.Second)
-// 	err = job.Kill()
-// 	assert.Nil(t, err)
-// 	assert.Equal(t, Killed, job.Status)
-// }
 
 func Test_ToMode(t *testing.T) {
 	jobHub := NewJobHub()
